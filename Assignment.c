@@ -14,7 +14,7 @@
 int bytes_write = 0;
 int bytes_read  = 0;
 int fd[2];
-
+int eof = -1;
 /* The mutex lock */
 pthread_mutex_t mutex;
 
@@ -87,13 +87,17 @@ void *runnerThreadA(){
       bytes_read_from_file = read(arq, buffer, MESSLENGTH);
       if(bytes_read_from_file !=0){
          bytes_write_in_file = write(fd[1], buffer, bytes_read_from_file);
+         sem_post(&empty);
+         pthread_mutex_lock(&mutex);
          bytes_write += bytes_write_in_file;
+         pthread_mutex_unlock(&mutex);
       }
       if(bytes_read_from_file != 10|0)
          printf("Bytes write = %d\n", bytes_write);
    }
    printf("Finish\n");
-   sem_post(&empty);
+   eof = 0;
+   //sem_post(&empty);
    close(arq);
 }
 
@@ -105,7 +109,6 @@ void *runnerThreadB(){
    int bytes = 0;
    int bytes_read = 0;
    int bytes_read_from_file = 0;
-   int count = 1;
    receive = open("receive.txt", O_CREAT|O_RDWR, 0666);
    if(receive < 0)
    {
@@ -118,7 +121,9 @@ void *runnerThreadB(){
    while(bytes_read != bytes_write){
       
       bytes_read_from_file = read(fd[0], collectFromPipe, MESSLENGTH);
+      pthread_mutex_lock(&mutex);
       bytes_read += bytes_read_from_file;
+      pthread_mutex_unlock(&mutex);
       bytes = write(receive, collectFromPipe, bytes_read_from_file);
       printf("Bytes read for pipe = %d\n",bytes_read);
       printf("Bytes wrote in file = %d\n",bytes);	
