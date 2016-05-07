@@ -10,6 +10,14 @@
 
 #define MESSLENGTH 10
 
+struct{
+   int file_descript;
+   char* url[15];
+   char buffer[MESSLENGTH];
+   int bytes_read_form_file;
+   int bytes_write_in_file;
+}file_structure;
+
 //Global variables
 int bytes_write = 0;
 int bytes_read  = 0;
@@ -91,13 +99,14 @@ void *runnerThreadA(){
          pthread_mutex_lock(&mutex);
          bytes_write += bytes_write_in_file;
          pthread_mutex_unlock(&mutex);
+        // if(bytes_write < 4120)
+            printf("Thread_A wrote %d bytes into the pipe\n", bytes_write);
+         //for(int i = 0; i < 999; i++){}
       }
-      if(bytes_read_from_file != 10|0)
-         printf("Bytes write = %d\n", bytes_write);
    }
-   printf("Finish\n");
+  // printf("Total wrote by Thread_A = %d bytes\n",bytes_write);
    eof = 0;
-   //sem_post(&empty);
+   sem_post(&empty);
    close(arq);
 }
 
@@ -109,6 +118,7 @@ void *runnerThreadB(){
    int bytes = 0;
    int bytes_read = 0;
    int bytes_read_from_file = 0;
+   
    receive = open("receive.txt", O_CREAT|O_RDWR, 0666);
    if(receive < 0)
    {
@@ -118,16 +128,18 @@ void *runnerThreadB(){
    
    sem_wait(&empty);
    
-   while(bytes_read != bytes_write){
-      
+   while(bytes_read != bytes_write || bytes_read_from_file == 10){
       bytes_read_from_file = read(fd[0], collectFromPipe, MESSLENGTH);
       pthread_mutex_lock(&mutex);
       bytes_read += bytes_read_from_file;
       pthread_mutex_unlock(&mutex);
       bytes = write(receive, collectFromPipe, bytes_read_from_file);
-      printf("Bytes read for pipe = %d\n",bytes_read);
-      printf("Bytes wrote in file = %d\n",bytes);	
+      if(bytes_read < 500)
+      printf("Thread_B read %d bytes from the pipe\n",bytes_read);	
       //sem_post(&full);
    }
+   
+   //printf("Total read by Thread_B = %d\n",bytes_read);	
+
    close(receive);
 }
